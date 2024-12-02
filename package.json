@@ -1,0 +1,50 @@
+{
+  "name": "analyticstride",
+  "version": "1.0.0",
+  "description": "Simple analytics tracking component for React applications",
+  "main": "dist/index.js",
+  "module": "dist/index.esm.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "rollup -c",
+    "dev": "rollup -c -w",
+    "test": "jest",
+    "prepare": "npm run build"
+  },
+  "peerDependencies": {
+    "react": ">=16.8.0",
+    "react-dom": ">=16.8.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "typescript": "^5.0.0",
+    "rollup": "^2.79.1",
+    "@rollup/plugin-commonjs": "^22.0.0",
+    "@rollup/plugin-node-resolve": "^13.3.0",
+    "@rollup/plugin-typescript": "^8.3.3",
+    "rollup-plugin-peer-deps-external": "^2.2.4",
+    "tslib": "^2.4.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TheRealPerson98/AnalyticStride"
+  },
+  "keywords": [
+    "analytics",
+    "react",
+    "tracking",
+    "web-analytics",
+    "statistics",
+    "metrics"
+  ],
+  "author": "Your Name",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/TheRealPerson98/AnalyticStride/issues"
+  },
+  "homepage": "https://github.com/TheRealPerson98/AnalyticStride#readme"
+}
