@@ -14,7 +14,26 @@ yarn add analyticstride
 
 Simply add the Analytics component to your app:
 
+### React
+
 ```jsx
+import { Analytics } from 'analyticstride';
+
+function App() {
+  return (
+    <div>
+      <Analytics />
+      {/* Your app content */}
+    </div>
+  );
+}
+```
+
+### Next.js
+
+```jsx
+'use client'; // If using in a Server Component
+
 import { Analytics } from 'analyticstride';
 
 function App() {

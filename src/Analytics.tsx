@@ -1,11 +1,10 @@
-import React, { useEffect } from 'react';
+'use client';
+
+import React, { useEffect, useCallback } from 'react';
 
 interface AnalyticsProps {
-  // Optional callback for when analytics data is collected
   onCollect?: (data: AnalyticsData) => void;
-  // Optional endpoint to send analytics data to
   endpoint?: string;
-  // Optional API key for authentication
   apiKey?: string;
 }
 
@@ -17,59 +16,75 @@ interface AnalyticsData {
   screenResolution: string;
   language: string;
   hostname: string;
+  eventType?: string;
+  buttonName?: string;
+  buttonText?: string;
 }
+
+interface WithTrackingProps {
+  trackingName?: string;
+  onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
+  children?: React.ReactNode;
+  [key: string]: any; // For other button props
+}
+
+// Context to share analytics functionality
+export const AnalyticsContext = React.createContext<{
+  trackEvent: (eventData: Partial<AnalyticsData>) => Promise<void>;
+}>({
+  trackEvent: async () => {},
+});
 
 export const Analytics: React.FC<AnalyticsProps> = ({ 
   onCollect,
-  endpoint = 'https://api.analyticstride.com/v1/collect',  // Cloud endpoint
-  apiKey = 'public'  // Default public tier
+  endpoint = 'https://api.analyticstride.com',
+  apiKey = 'public'
 }) => {
-  useEffect(() => {
-    const collectData = async () => {
+  const trackEvent = useCallback(async (eventData: Partial<AnalyticsData>) => {
+    try {
       const data: AnalyticsData = {
         pathname: window.location.pathname,
         timestamp: Date.now(),
-        referrer: document.referrer,
+        referrer: document.referrer || 'direct',
         userAgent: navigator.userAgent,
         screenResolution: `${window.screen.width}x${window.screen.height}`,
         language: navigator.language,
-        hostname: window.location.hostname
+        hostname: window.location.hostname,
+        ...eventData
       };
 
-      // Call the onCollect callback if provided
       if (onCollect) {
         onCollect(data);
       }
 
-      try {
-        // Send data to the endpoint
-        const response = await fetch(endpoint, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-API-Key': apiKey,
-          },
-          body: JSON.stringify(data),
-        });
+      const response = await fetch(`${endpoint}/collect`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': apiKey,
+        },
+        body: JSON.stringify(data),
+        mode: 'cors',
+        credentials: 'omit',
+      });
 
-        if (!response.ok) {
-          console.error('Failed to send analytics data');
-        }
-      } catch (error) {
-        // Silently fail in production to not affect the user's app
-        if (process.env.NODE_ENV !== 'production') {
-          console.error('Error sending analytics data:', error);
-        }
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
-    };
+    } catch (error) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('Analytics error:', error);
+      }
+    }
+  }, [onCollect, endpoint, apiKey]);
 
-    // Collect data when component mounts
-    collectData();
+  useEffect(() => {
+    // Track page view on mount
+    trackEvent({ eventType: 'pageview' });
 
-    // Set up page visibility change listener
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        collectData();
+        trackEvent({ eventType: 'pageview' });
       }
     };
 
@@ -78,8 +93,50 @@ export const Analytics: React.FC<AnalyticsProps> = ({
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [onCollect, endpoint, apiKey]);
+  }, [trackEvent]);
 
-  // Component doesn't render anything
-  return null;
-}; 
+  return (
+    <AnalyticsContext.Provider value={{ trackEvent }}>
+      {null}
+    </AnalyticsContext.Provider>
+  );
+};
+
+// Higher-order component for tracking button clicks
+export const withTracking = (WrappedButton: React.ComponentType<any>) => {
+  return React.forwardRef<HTMLButtonElement, WithTrackingProps>(({ 
+    trackingName,
+    onClick,
+    children,
+    ...props 
+  }, ref) => {
+    const { trackEvent } = React.useContext(AnalyticsContext);
+
+    const handleClick = async (e: React.MouseEvent<HTMLButtonElement>) => {
+      // Track the button click
+      trackEvent({
+        eventType: 'button_click',
+        buttonName: trackingName || props.name || 'unnamed_button',
+        buttonText: typeof children === 'string' ? children : 'custom_content'
+      });
+
+      // Call the original onClick handler
+      if (onClick) {
+        onClick(e);
+      }
+    };
+
+    return (
+      <button
+        {...props}
+        ref={ref}
+        onClick={handleClick}
+      >
+        {children}
+      </button>
+    );
+  });
+};
+
+// Tracked button component for easier usage
+export const TrackedButton: React.FC<WithTrackingProps> = withTracking((props) => <button {...props} />); 

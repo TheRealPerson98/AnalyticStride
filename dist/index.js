@@ -1,8 +1,14 @@
+'use client';
+
 'use strict';
 
 Object.defineProperty(exports, '__esModule', { value: true });
 
-var react = require('react');
+var React = require('react');
+
+function _interopDefaultLegacy (e) { return e && typeof e === 'object' && 'default' in e ? e : { 'default': e }; }
+
+var React__default = /*#__PURE__*/_interopDefaultLegacy(React);
 
 /******************************************************************************
 Copyright (c) Microsoft Corporation.
@@ -18,6 +24,29 @@ LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
 OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
 PERFORMANCE OF THIS SOFTWARE.
 ***************************************************************************** */
+
+var __assign = function() {
+  __assign = Object.assign || function __assign(t) {
+      for (var s, i = 1, n = arguments.length; i < n; i++) {
+          s = arguments[i];
+          for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p)) t[p] = s[p];
+      }
+      return t;
+  };
+  return __assign.apply(this, arguments);
+};
+
+function __rest(s, e) {
+  var t = {};
+  for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p) && e.indexOf(p) < 0)
+      t[p] = s[p];
+  if (s != null && typeof Object.getOwnPropertySymbols === "function")
+      for (var i = 0, p = Object.getOwnPropertySymbols(s); i < p.length; i++) {
+          if (e.indexOf(p[i]) < 0 && Object.prototype.propertyIsEnumerable.call(s, p[i]))
+              t[p[i]] = s[p[i]];
+      }
+  return t;
+}
 
 function __awaiter(thisArg, _arguments, P, generator) {
   function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
@@ -62,75 +91,90 @@ typeof SuppressedError === "function" ? SuppressedError : function (error, suppr
   return e.name = "SuppressedError", e.error = error, e.suppressed = suppressed, e;
 };
 
+// Context to share analytics functionality
+var AnalyticsContext = React__default["default"].createContext({
+    trackEvent: function () { return __awaiter(void 0, void 0, void 0, function () { return __generator(this, function (_a) {
+        return [2 /*return*/];
+    }); }); },
+});
 var Analytics = function (_a) {
-    var onCollect = _a.onCollect, _b = _a.endpoint, endpoint = _b === void 0 ? 'https://api.analyticstride.com/v1/collect' : _b, // Cloud endpoint
-    _c = _a.apiKey // Default public tier
-    , // Cloud endpoint
-    apiKey = _c === void 0 ? 'public' : _c // Default public tier
-    ;
-    react.useEffect(function () {
-        var collectData = function () { return __awaiter(void 0, void 0, void 0, function () {
-            var data, response, error_1;
-            return __generator(this, function (_a) {
-                switch (_a.label) {
-                    case 0:
-                        data = {
-                            pathname: window.location.pathname,
-                            timestamp: Date.now(),
-                            referrer: document.referrer,
-                            userAgent: navigator.userAgent,
-                            screenResolution: "".concat(window.screen.width, "x").concat(window.screen.height),
-                            language: navigator.language,
-                            hostname: window.location.hostname
-                        };
-                        // Call the onCollect callback if provided
-                        if (onCollect) {
-                            onCollect(data);
-                        }
-                        _a.label = 1;
-                    case 1:
-                        _a.trys.push([1, 3, , 4]);
-                        return [4 /*yield*/, fetch(endpoint, {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    'X-API-Key': apiKey,
-                                },
-                                body: JSON.stringify(data),
-                            })];
-                    case 2:
-                        response = _a.sent();
-                        if (!response.ok) {
-                            console.error('Failed to send analytics data');
-                        }
-                        return [3 /*break*/, 4];
-                    case 3:
-                        error_1 = _a.sent();
-                        // Silently fail in production to not affect the user's app
-                        if (process.env.NODE_ENV !== 'production') {
-                            console.error('Error sending analytics data:', error_1);
-                        }
-                        return [3 /*break*/, 4];
-                    case 4: return [2 /*return*/];
-                }
-            });
-        }); };
-        // Collect data when component mounts
-        collectData();
-        // Set up page visibility change listener
+    var onCollect = _a.onCollect, _b = _a.endpoint, endpoint = _b === void 0 ? 'https://api.analyticstride.com' : _b, _c = _a.apiKey, apiKey = _c === void 0 ? 'public' : _c;
+    var trackEvent = React.useCallback(function (eventData) { return __awaiter(void 0, void 0, void 0, function () {
+        var data, response, error_1;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    _a.trys.push([0, 2, , 3]);
+                    data = __assign({ pathname: window.location.pathname, timestamp: Date.now(), referrer: document.referrer || 'direct', userAgent: navigator.userAgent, screenResolution: "".concat(window.screen.width, "x").concat(window.screen.height), language: navigator.language, hostname: window.location.hostname }, eventData);
+                    if (onCollect) {
+                        onCollect(data);
+                    }
+                    return [4 /*yield*/, fetch("".concat(endpoint, "/collect"), {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-API-Key': apiKey,
+                            },
+                            body: JSON.stringify(data),
+                            mode: 'cors',
+                            credentials: 'omit',
+                        })];
+                case 1:
+                    response = _a.sent();
+                    if (!response.ok) {
+                        throw new Error("HTTP error! status: ".concat(response.status));
+                    }
+                    return [3 /*break*/, 3];
+                case 2:
+                    error_1 = _a.sent();
+                    if (process.env.NODE_ENV !== 'production') {
+                        console.error('Analytics error:', error_1);
+                    }
+                    return [3 /*break*/, 3];
+                case 3: return [2 /*return*/];
+            }
+        });
+    }); }, [onCollect, endpoint, apiKey]);
+    React.useEffect(function () {
+        // Track page view on mount
+        trackEvent({ eventType: 'pageview' });
         var handleVisibilityChange = function () {
             if (document.visibilityState === 'visible') {
-                collectData();
+                trackEvent({ eventType: 'pageview' });
             }
         };
         document.addEventListener('visibilitychange', handleVisibilityChange);
         return function () {
             document.removeEventListener('visibilitychange', handleVisibilityChange);
         };
-    }, [onCollect, endpoint, apiKey]);
-    // Component doesn't render anything
-    return null;
+    }, [trackEvent]);
+    return (React__default["default"].createElement(AnalyticsContext.Provider, { value: { trackEvent: trackEvent } }, null));
 };
+// Higher-order component for tracking button clicks
+var withTracking = function (WrappedButton) {
+    return React__default["default"].forwardRef(function (_a, ref) {
+        var trackingName = _a.trackingName, onClick = _a.onClick, children = _a.children, props = __rest(_a, ["trackingName", "onClick", "children"]);
+        var trackEvent = React__default["default"].useContext(AnalyticsContext).trackEvent;
+        var handleClick = function (e) { return __awaiter(void 0, void 0, void 0, function () {
+            return __generator(this, function (_a) {
+                // Track the button click
+                trackEvent({
+                    eventType: 'button_click',
+                    buttonName: trackingName || props.name || 'unnamed_button',
+                    buttonText: typeof children === 'string' ? children : 'custom_content'
+                });
+                // Call the original onClick handler
+                if (onClick) {
+                    onClick(e);
+                }
+                return [2 /*return*/];
+            });
+        }); };
+        return (React__default["default"].createElement("button", __assign({}, props, { ref: ref, onClick: handleClick }), children));
+    });
+};
+// Tracked button component for easier usage
+withTracking();
 
 exports.Analytics = Analytics;
 //# sourceMappingURL=index.js.map
