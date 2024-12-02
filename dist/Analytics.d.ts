@@ -3,6 +3,7 @@ interface AnalyticsProps {
     onCollect?: (data: AnalyticsData) => void;
     endpoint?: string;
     apiKey?: string;
+    debug?: boolean;
 }
 interface AnalyticsData {
     pathname: string;

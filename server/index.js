@@ -32,9 +32,9 @@ const analyticsSchema = new mongoose.Schema({
   screenResolution: String,
   language: String,
   hostname: String,
-  eventType: { type: String, default: 'pageview' }, // pageview or button_click
-  buttonName: String, // For button clicks
-  buttonText: String, // For button clicks
+  eventType: { type: String, default: 'pageview' },
+  buttonName: String,
+  buttonText: String,
   createdAt: { type: Date, default: Date.now }
 });
 
@@ -45,11 +45,26 @@ app.get('/', (req, res) => {
   res.json({ status: 'ok' });
 });
 
+// Request logging middleware
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.path}`, {
+    body: req.body,
+    headers: req.headers
+  });
+  next();
+});
+
 // Routes
 app.post('/collect', async (req, res) => {
   try {
+    console.log('Received analytics data:', req.body);
+    
     const analyticsData = new Analytics(req.body);
+    console.log('Created analytics document:', analyticsData);
+    
     await analyticsData.save();
+    console.log('Saved analytics document successfully');
+    
     res.status(201).json({ status: 'success' });
   } catch (error) {
     console.error('Error saving analytics:', error);
@@ -63,12 +78,10 @@ app.get('/analytics', async (req, res) => {
     const { eventType, from, to } = req.query;
     let query = {};
 
-    // Filter by event type if specified
     if (eventType) {
       query.eventType = eventType;
     }
 
-    // Filter by date range if specified
     if (from || to) {
       query.timestamp = {};
       if (from) query.timestamp.$gte = parseInt(from);
@@ -86,13 +99,14 @@ app.get('/analytics', async (req, res) => {
       }
     });
   } catch (error) {
+    console.error('Error fetching analytics:', error);
     res.status(500).json({ status: 'error', message: 'Failed to fetch analytics data' });
   }
 });
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-  console.error(err.stack);
+  console.error('Server error:', err);
   res.status(500).json({ status: 'error', message: 'Something broke!' });
 });
 

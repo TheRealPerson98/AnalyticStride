@@ -6,6 +6,7 @@ interface AnalyticsProps {
   onCollect?: (data: AnalyticsData) => void;
   endpoint?: string;
   apiKey?: string;
+  debug?: boolean;
 }
 
 interface AnalyticsData {
@@ -25,10 +26,9 @@ interface WithTrackingProps {
   trackingName?: string;
   onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
   children?: React.ReactNode;
-  [key: string]: any; // For other button props
+  [key: string]: any;
 }
 
-// Context to share analytics functionality
 export const AnalyticsContext = React.createContext<{
   trackEvent: (eventData: Partial<AnalyticsData>) => Promise<void>;
 }>({
@@ -38,7 +38,8 @@ export const AnalyticsContext = React.createContext<{
 export const Analytics: React.FC<AnalyticsProps> = ({ 
   onCollect,
   endpoint = 'https://api.analyticstride.com',
-  apiKey = 'public'
+  apiKey = 'public',
+  debug = true
 }) => {
   const trackEvent = useCallback(async (eventData: Partial<AnalyticsData>) => {
     try {
@@ -53,11 +54,24 @@ export const Analytics: React.FC<AnalyticsProps> = ({
         ...eventData
       };
 
+      if (debug) {
+        console.log('Analytics Event:', {
+          type: eventData.eventType || 'pageview',
+          data
+        });
+      }
+
       if (onCollect) {
         onCollect(data);
       }
 
-      const response = await fetch(`${endpoint}/collect`, {
+      const url = `${endpoint}/collect`;
+      if (debug) {
+        console.log('Sending to:', url);
+        console.log('Request body:', JSON.stringify(data, null, 2));
+      }
+
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -68,22 +82,39 @@ export const Analytics: React.FC<AnalyticsProps> = ({
         credentials: 'omit',
       });
 
+      const responseText = await response.text();
+      
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        throw new Error(`HTTP error! status: ${response.status}, body: ${responseText}`);
+      }
+
+      if (debug) {
+        try {
+          const responseData = JSON.parse(responseText);
+          console.log('Server Response:', responseData);
+        } catch (e) {
+          console.log('Raw Server Response:', responseText);
+        }
       }
     } catch (error) {
-      if (process.env.NODE_ENV !== 'production') {
-        console.error('Analytics error:', error);
+      console.error('Analytics error:', error);
+      if (debug) {
+        console.error('Full error details:', {
+          endpoint,
+          eventData,
+          error
+        });
       }
     }
-  }, [onCollect, endpoint, apiKey]);
+  }, [onCollect, endpoint, apiKey, debug]);
 
   useEffect(() => {
-    // Track page view on mount
+    if (debug) console.log('Analytics mounted, tracking pageview');
     trackEvent({ eventType: 'pageview' });
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
+        if (debug) console.log('Page became visible, tracking pageview');
         trackEvent({ eventType: 'pageview' });
       }
     };
@@ -93,16 +124,15 @@ export const Analytics: React.FC<AnalyticsProps> = ({
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [trackEvent]);
+  }, [trackEvent, debug]);
 
   return (
     <AnalyticsContext.Provider value={{ trackEvent }}>
-      {null}
+      {debug && <div style={{ display: 'none' }}>Analytics Initialized</div>}
     </AnalyticsContext.Provider>
   );
 };
 
-// Higher-order component for tracking button clicks
 export const withTracking = (WrappedButton: React.ComponentType<any>) => {
   return React.forwardRef<HTMLButtonElement, WithTrackingProps>(({ 
     trackingName,
@@ -113,11 +143,20 @@ export const withTracking = (WrappedButton: React.ComponentType<any>) => {
     const { trackEvent } = React.useContext(AnalyticsContext);
 
     const handleClick = async (e: React.MouseEvent<HTMLButtonElement>) => {
-      // Track the button click
-      trackEvent({
+      console.log('Button clicked:', trackingName);
+      
+      const buttonText = typeof children === 'string' ? children : 'custom_content';
+      console.log('Button details:', {
         eventType: 'button_click',
         buttonName: trackingName || props.name || 'unnamed_button',
-        buttonText: typeof children === 'string' ? children : 'custom_content'
+        buttonText
+      });
+
+      // Track the button click
+      await trackEvent({
+        eventType: 'button_click',
+        buttonName: trackingName || props.name || 'unnamed_button',
+        buttonText
       });
 
       // Call the original onClick handler
@@ -138,5 +177,4 @@ export const withTracking = (WrappedButton: React.ComponentType<any>) => {
   });
 };
 
-// Tracked button component for easier usage
 export const TrackedButton: React.FC<WithTrackingProps> = withTracking((props) => <button {...props} />); 

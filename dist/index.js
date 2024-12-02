@@ -91,25 +91,35 @@ typeof SuppressedError === "function" ? SuppressedError : function (error, suppr
   return e.name = "SuppressedError", e.error = error, e.suppressed = suppressed, e;
 };
 
-// Context to share analytics functionality
 var AnalyticsContext = React__default["default"].createContext({
     trackEvent: function () { return __awaiter(void 0, void 0, void 0, function () { return __generator(this, function (_a) {
         return [2 /*return*/];
     }); }); },
 });
 var Analytics = function (_a) {
-    var onCollect = _a.onCollect, _b = _a.endpoint, endpoint = _b === void 0 ? 'https://api.analyticstride.com' : _b, _c = _a.apiKey, apiKey = _c === void 0 ? 'public' : _c;
+    var onCollect = _a.onCollect, _b = _a.endpoint, endpoint = _b === void 0 ? 'https://api.analyticstride.com' : _b, _c = _a.apiKey, apiKey = _c === void 0 ? 'public' : _c, _d = _a.debug, debug = _d === void 0 ? true : _d;
     var trackEvent = React.useCallback(function (eventData) { return __awaiter(void 0, void 0, void 0, function () {
-        var data, response, error_1;
+        var data, url, response, responseText, responseData, error_1;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
-                    _a.trys.push([0, 2, , 3]);
+                    _a.trys.push([0, 3, , 4]);
                     data = __assign({ pathname: window.location.pathname, timestamp: Date.now(), referrer: document.referrer || 'direct', userAgent: navigator.userAgent, screenResolution: "".concat(window.screen.width, "x").concat(window.screen.height), language: navigator.language, hostname: window.location.hostname }, eventData);
+                    if (debug) {
+                        console.log('Analytics Event:', {
+                            type: eventData.eventType || 'pageview',
+                            data: data
+                        });
+                    }
                     if (onCollect) {
                         onCollect(data);
                     }
-                    return [4 /*yield*/, fetch("".concat(endpoint, "/collect"), {
+                    url = "".concat(endpoint, "/collect");
+                    if (debug) {
+                        console.log('Sending to:', url);
+                        console.log('Request body:', JSON.stringify(data, null, 2));
+                    }
+                    return [4 /*yield*/, fetch(url, {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
@@ -121,25 +131,45 @@ var Analytics = function (_a) {
                         })];
                 case 1:
                     response = _a.sent();
-                    if (!response.ok) {
-                        throw new Error("HTTP error! status: ".concat(response.status));
-                    }
-                    return [3 /*break*/, 3];
+                    return [4 /*yield*/, response.text()];
                 case 2:
-                    error_1 = _a.sent();
-                    if (process.env.NODE_ENV !== 'production') {
-                        console.error('Analytics error:', error_1);
+                    responseText = _a.sent();
+                    if (!response.ok) {
+                        throw new Error("HTTP error! status: ".concat(response.status, ", body: ").concat(responseText));
                     }
-                    return [3 /*break*/, 3];
-                case 3: return [2 /*return*/];
+                    if (debug) {
+                        try {
+                            responseData = JSON.parse(responseText);
+                            console.log('Server Response:', responseData);
+                        }
+                        catch (e) {
+                            console.log('Raw Server Response:', responseText);
+                        }
+                    }
+                    return [3 /*break*/, 4];
+                case 3:
+                    error_1 = _a.sent();
+                    console.error('Analytics error:', error_1);
+                    if (debug) {
+                        console.error('Full error details:', {
+                            endpoint: endpoint,
+                            eventData: eventData,
+                            error: error_1
+                        });
+                    }
+                    return [3 /*break*/, 4];
+                case 4: return [2 /*return*/];
             }
         });
-    }); }, [onCollect, endpoint, apiKey]);
+    }); }, [onCollect, endpoint, apiKey, debug]);
     React.useEffect(function () {
-        // Track page view on mount
+        if (debug)
+            console.log('Analytics mounted, tracking pageview');
         trackEvent({ eventType: 'pageview' });
         var handleVisibilityChange = function () {
             if (document.visibilityState === 'visible') {
+                if (debug)
+                    console.log('Page became visible, tracking pageview');
                 trackEvent({ eventType: 'pageview' });
             }
         };
@@ -147,34 +177,48 @@ var Analytics = function (_a) {
         return function () {
             document.removeEventListener('visibilitychange', handleVisibilityChange);
         };
-    }, [trackEvent]);
-    return (React__default["default"].createElement(AnalyticsContext.Provider, { value: { trackEvent: trackEvent } }, null));
+    }, [trackEvent, debug]);
+    return (React__default["default"].createElement(AnalyticsContext.Provider, { value: { trackEvent: trackEvent } }, debug && React__default["default"].createElement("div", { style: { display: 'none' } }, "Analytics Initialized")));
 };
-// Higher-order component for tracking button clicks
 var withTracking = function (WrappedButton) {
     return React__default["default"].forwardRef(function (_a, ref) {
         var trackingName = _a.trackingName, onClick = _a.onClick, children = _a.children, props = __rest(_a, ["trackingName", "onClick", "children"]);
         var trackEvent = React__default["default"].useContext(AnalyticsContext).trackEvent;
         var handleClick = function (e) { return __awaiter(void 0, void 0, void 0, function () {
+            var buttonText;
             return __generator(this, function (_a) {
-                // Track the button click
-                trackEvent({
-                    eventType: 'button_click',
-                    buttonName: trackingName || props.name || 'unnamed_button',
-                    buttonText: typeof children === 'string' ? children : 'custom_content'
-                });
-                // Call the original onClick handler
-                if (onClick) {
-                    onClick(e);
+                switch (_a.label) {
+                    case 0:
+                        console.log('Button clicked:', trackingName);
+                        buttonText = typeof children === 'string' ? children : 'custom_content';
+                        console.log('Button details:', {
+                            eventType: 'button_click',
+                            buttonName: trackingName || props.name || 'unnamed_button',
+                            buttonText: buttonText
+                        });
+                        // Track the button click
+                        return [4 /*yield*/, trackEvent({
+                                eventType: 'button_click',
+                                buttonName: trackingName || props.name || 'unnamed_button',
+                                buttonText: buttonText
+                            })];
+                    case 1:
+                        // Track the button click
+                        _a.sent();
+                        // Call the original onClick handler
+                        if (onClick) {
+                            onClick(e);
+                        }
+                        return [2 /*return*/];
                 }
-                return [2 /*return*/];
             });
         }); };
         return (React__default["default"].createElement("button", __assign({}, props, { ref: ref, onClick: handleClick }), children));
     });
 };
-// Tracked button component for easier usage
-withTracking();
+var TrackedButton = withTracking();
 
 exports.Analytics = Analytics;
+exports.TrackedButton = TrackedButton;
+exports.withTracking = withTracking;
 //# sourceMappingURL=index.js.map

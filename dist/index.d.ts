@@ -1,1 +1,1 @@
-export { Analytics } from './Analytics';
+export { Analytics, TrackedButton, withTracking } from './Analytics';
